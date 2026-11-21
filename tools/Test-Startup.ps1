@@ -1,7 +1,7 @@
 param([string]$Exe = (Join-Path $PSScriptRoot '..\artifacts\installer-payload\ScanControl.App.exe'))
 $ErrorActionPreference = 'Stop'
 $resolved = [IO.Path]::GetFullPath($Exe)
-foreach ($mode in @('--startup-smoke-test', '--startup-smoke-test --safe-start')) {
+foreach ($mode in @('--startup-smoke-test', '--startup-smoke-test --safe-start', '--layout-smoke-test')) {
     $watch = [Diagnostics.Stopwatch]::StartNew()
     $process = Start-Process -FilePath $resolved -ArgumentList $mode -WindowStyle Hidden -PassThru
     if (-not $process.WaitForExit(30000)) {

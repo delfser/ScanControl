@@ -43,6 +43,7 @@ public static partial class Parser
 // Independently implemented from Uniden PCi_bc780_v104, printed pages 1, 8, 28–30, 34, 38, 42–47.
 public class Bc780Scanner(ICommandTransport transport) : IScanner
 {
+    private readonly Dictionary<int, (DateTimeOffset At, decimal Frequency, string Name)> displayMemory = [];
     public bool Simulation => false;
     private Task<string> Send(string command, CancellationToken ct) => transport.ExchangeAsync(command, ct);
     private async Task Ok(string command, CancellationToken ct)
@@ -82,6 +83,7 @@ public class Bc780Scanner(ICommandTransport transport) : IScanner
     public async Task WriteAsync(Channel c, CancellationToken ct = default)
     {
         Validation.Channel(c);
+        displayMemory.Remove(c.Number);
         // Trunk systems require bank/talkgroup configuration not covered by this channel editor.
         if (c.Trunk) throw new NotSupportedException("Trunking-Upload ist nicht freigegeben; Banksystem und Talkgroups werden nicht vollständig verwaltet.");
         Parser.Channel(await Send($"MA{c.Number:000}", ct), c.Number);
@@ -97,13 +99,38 @@ public class Bc780Scanner(ICommandTransport transport) : IScanner
         await Ok($"BA{(c.BeepAlert ? "N" : "F")} C {c.Number:000}", ct);
         await Ok($"TA C {c.Number:000} {c.Name}", ct);
     }
-    public async Task<ScannerDisplay> DisplayAsync(CancellationToken ct = default) => new(
-        Parser.Lcd(await Send("LCD CHN", ct), "CHN"), Parser.Lcd(await Send("LCD FRQ", ct), "FRQ"),
-        Parser.Lcd(await Send("LCD LINE1", ct), "LINE1"), Parser.Lcd(await Send("LCD LINE2", ct), "LINE2"),
-        Parser.Value(await Send("MD", ct), "MD"));
+    public async Task<ScannerDisplay> DisplayAsync(CancellationToken ct = default)
+    {
+        var channel = Parser.Lcd(await Send("LCD CHN", ct), "CHN");
+        var frequency = Parser.Lcd(await Send("LCD FRQ", ct), "FRQ");
+        var line1 = Parser.Lcd(await Send("LCD LINE1", ct), "LINE1");
+        var line2 = Parser.Lcd(await Send("LCD LINE2", ct), "LINE2");
+        var mode = Parser.Value(await Send("MD", ct), "MD");
+        var modeText = mode switch { "00" => "SCAN", "01" => "MAN / HOLD", "02" => "SEARCH", "03" => "SEARCH HOLD", _ => "MODUS " + mode };
+        // LCD FRQ/LINE1 can be blank while scanning. PMnnn and TA only query memory;
+        // never use MAnnn here, since that would interrupt the running scan.
+        if ((string.IsNullOrWhiteSpace(frequency) || string.IsNullOrWhiteSpace(line1)) &&
+            int.TryParse(channel, NumberStyles.None, CultureInfo.InvariantCulture, out var number) && number is >= 1 and <= 500)
+        {
+            if (!displayMemory.TryGetValue(number, out var memory) || DateTimeOffset.UtcNow - memory.At > TimeSpan.FromSeconds(10))
+            {
+                var stored = Parser.Channel(await Send($"PM{number:000}", ct), number);
+                var name = Parser.Value(await Send($"TA C {number:000}", ct), $"TA C {number:000} ");
+                memory = (DateTimeOffset.UtcNow, stored.FrequencyMHz, name);
+                displayMemory[number] = memory;
+            }
+            var frequencyFromMemory = string.IsNullOrWhiteSpace(frequency);
+            if (frequencyFromMemory) frequency = memory.Frequency == 0 ? "" : memory.Frequency.ToString("F4", CultureInfo.InvariantCulture);
+            if (string.IsNullOrWhiteSpace(line1)) line1 = string.IsNullOrWhiteSpace(memory.Name) ? "KANAL " + number : memory.Name;
+            // The LCD channel is only a sampled scan position, not proof of a received signal.
+            line2 = frequencyFromMemory ? "KANALSPEICHER · " + modeText : line2;
+        }
+        return new(channel, frequency, line1, line2, modeText);
+    }
     public Task KeyAsync(string code, CancellationToken ct = default)
     {
         if (!Regex.IsMatch(code, @"^(0[0-9]|1[0-4])( [0-9])?$")) throw new ArgumentException("Ungültiger Tastencode.");
+        displayMemory.Clear();
         return Ok("KEY" + code, ct);
     }
     public void Dispose() => transport.Dispose();

@@ -16,7 +16,7 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         SafeStart = e.Args.Contains("--safe-start");
-        SmokeTest = e.Args.Contains("--startup-smoke-test");
+        SmokeTest = e.Args.Contains("--startup-smoke-test") || e.Args.Contains("--layout-smoke-test");
         RenderOptions.ProcessRenderMode = e.Args.Contains("--hardware-rendering") ? RenderMode.Default : RenderMode.SoftwareOnly;
         StartupDiagnostics.Write($"START version={typeof(App).Assembly.GetName().Version} OS={Environment.OSVersion} render={RenderOptions.ProcessRenderMode} safe={SafeStart} smoke={SmokeTest}");
         DispatcherUnhandledException += (_, args) =>

@@ -24,6 +24,8 @@ PM verändert Delay/Abschwächung/Record. Der Schreiber setzt diese Eigenschafte
 
 Kein AC (Speicherinitialisierung), kein proprietärer Clone-Modus, keine Lautstärke-/Squelchschreibbefehle. Die LCD-Darstellung zeigt gelesene Felder, bildet aber nicht sämtliche Icons und Blinkzustände des physischen Displays nach. Modusnummern werden unverändert dargestellt. Unbekannte Firmwarevarianten müssen anhand tatsächlicher Antworten geprüft werden; keine stillschweigende Protokollannahme.
 
+Ab 0.2.3 werden bekannte Modusnummern als SCAN, MAN/HOLD oder SEARCH dargestellt. Bei leeren LCD-Feldern und einer numerischen Kanalposition werden Frequenz/Name über PM/TA aus dem Speicher ergänzt und als KANALSPEICHER markiert. Die Abfrage verändert die Kanalauswahl nicht. Während eines laufenden Scans ist die Kanalposition eine Momentaufnahme; die ergänzten Werte dürfen nicht als sicher empfangenes Signal interpretiert werden. Nichtnumerische LCD-Kanaltexte lösen keine Speicherabfrage aus.
+
 Nicht implementierte dokumentierte Funktionen (u.a. Banksysteme und Talkgroups) sind in der README als offen gekennzeichnet. Der Befehlsumfang ist kein vollständiger Geräteclone.
 
 This product contains Uniden proprietary and/or copyright control codes. Used with permission.

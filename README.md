@@ -6,6 +6,10 @@ Die Scannerfront besitzt eine geschichtete Gehäuseblende, ein kompaktes bernste
 
 ## Start und Installation
 
+Version 0.2.3 verwendet ein kompakteres Laptoplayout mit kleineren Bedienelementen, einklappbarer Scannerfront und einem äußeren horizontalen/vertikalen Scrollbereich. „Kanäle“ in der Navigation klappt die Front ein. Die Kanaltabelle behält eine sinnvolle Mindesthöhe und eigene Scrollbalken. Das Fenster startet innerhalb des Windows-Arbeitsbereichs; zusätzliche Layouttests prüfen 1024×600 und 900×500.
+
+Beim Scannen kann der Scanner leere LCD-Frequenz-/Namensfelder liefern. Für eine gültige angezeigte Kanalnummer fragt ScanControl dann den Kanalspeicher über PM und TA ab, ohne MAnnn zu senden oder den Scan anzuhalten. Diese Werte erscheinen ausdrücklich als **KANALSPEICHER**, nicht als Nachweis einer empfangenen Frequenz. Daten werden pro Kanal bis zu zehn Sekunden zwischengespeichert; eigene Schreib-/Tastenbefehle verwerfen den Cache. Tatsächlich gelieferte LCD-Werte haben Vorrang. Eine leere Frequenz erscheint als „—“ statt einer alleinstehenden MHz-Einheit.
+
 Version 0.2.2 erkennt auch die vom angeschlossenen europäischen Gerät gemeldete Kennung `SI UBC780XLT,0000000000,103`. Beide Modellnamen werden exakt geprüft; ähnliche oder unvollständige Geräteantworten bleiben gesperrt. Der tatsächliche Modellname erscheint im Verbindungsstatus. Beim Verbindungswechsel wird die alte Displayanzeige geleert, damit simulierte Anzeigedaten nicht als Hardwareantwort erscheinen. Dies bestätigt die Geräteerkennung, noch nicht sämtliche Lese-/Schreibfunktionen der UBC-Variante. Für den im Hardwaretest gezeigten Anschluss sind **COM3 und 4800 Baud** einzustellen.
 
 ### Startkorrektur in 0.2.1

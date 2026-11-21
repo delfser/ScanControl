@@ -1,7 +1,7 @@
 # ScanControl auf einem zweiten PC installieren
 
 1. Im privaten GitHub-Repository `delfser/ScanControl` anmelden und **Releases** öffnen.
-2. Unter **Assets** die Datei `ScanControl-Setup-0.2.2-win-x64.exe` herunterladen. Die automatisch angebotenen „Source code“-Archive sind nicht der Installer.
+2. Unter **Assets** die Datei `ScanControl-Setup-0.2.3-win-x64.exe` herunterladen. Die automatisch angebotenen „Source code“-Archive sind nicht der Installer.
 3. Setup starten und Zielordner bestätigen. Optional „Desktopsymbol erstellen“ auswählen.
 4. ScanControl über Startmenü oder Desktop öffnen. Beim ersten Start ist die Simulation aktiv.
 

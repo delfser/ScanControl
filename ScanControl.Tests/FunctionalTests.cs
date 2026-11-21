@@ -120,6 +120,47 @@ public class FunctionalTests
     [InlineData("SI UBC785XLT,0000000000,103")]
     [InlineData("SI UBC780XLT,0000000000,103\n")]
     public void RejectMalformedOrDifferentIdentity(string response) => Assert.Throws<InvalidDataException>(() => Parser.Identity(response));
+    [Fact] public async Task ScanningBlankLcdShowsLabelledStoredChannelWithoutStoppingScan()
+    {
+        var sent = new List<string>();
+        using var scanner = new Bc780Scanner(new ScriptTransport(command =>
+        {
+            sent.Add(command);
+            return command switch
+            {
+                "LCD CHN" => "CHN [5]", "LCD FRQ" => "FRQ [         ]", "LCD LINE1" => "LINE1 [                ][ _ ]",
+                "LCD LINE2" => "LINE2 [> SCANNING      ][ _ ]", "MD" => "MD00",
+                "PM005" => "C005 F01726750 TF DN LF AF RF N000", "TA C 005" => "TA C 005 K2 Beispiel",
+                _ => throw new InvalidOperationException("Unexpected command: " + command)
+            };
+        }));
+        var d = await scanner.DisplayAsync();
+        Assert.Equal("172.6750", d.Frequency); Assert.Equal("K2 Beispiel", d.Line1);
+        Assert.Contains("KANALSPEICHER", d.Line2); Assert.Equal("SCAN", d.Mode);
+        Assert.DoesNotContain(sent, c => c.StartsWith("MA") || c.StartsWith("KEY"));
+        await scanner.DisplayAsync(); Assert.Equal(1, sent.Count(c => c == "PM005"));
+    }
+    [Fact] public async Task ActualLcdFrequencyIsRetained()
+    {
+        using var scanner = new Bc780Scanner(new ScriptTransport(command => command switch
+        {
+            "LCD CHN" => "CHN [5]", "LCD FRQ" => "FRQ [172.6750]", "LCD LINE1" => "LINE1 [Live Name][ _ ]",
+            "LCD LINE2" => "LINE2 [Empfang][ _ ]", "MD" => "MD01",
+            _ => throw new InvalidOperationException("Should not query channel memory: " + command)
+        }));
+        var d = await scanner.DisplayAsync(); Assert.Equal("172.6750", d.Frequency); Assert.Equal("Live Name", d.Line1);
+        Assert.DoesNotContain("KANALSPEICHER", d.Line2); Assert.Equal("MAN / HOLD", d.Mode);
+    }
+    [Fact] public async Task NonChannelLcdDoesNotInventMemoryNumber()
+    {
+        using var scanner = new Bc780Scanner(new ScriptTransport(command => command switch
+        {
+            "LCD CHN" => "CHN [bn6]", "LCD FRQ" => "FRQ [ ]", "LCD LINE1" => "LINE1 [ ][ _ ]",
+            "LCD LINE2" => "LINE2 [Searching][ _ ]", "MD" => "MD02",
+            _ => throw new InvalidOperationException("Invalid memory fallback: " + command)
+        }));
+        var d = await scanner.DisplayAsync(); Assert.Empty(d.Frequency); Assert.Equal("bn6", d.Channel);
+    }
     private sealed class ScriptTransport(Func<string, string> respond) : ICommandTransport
     {
         public Task<string> ExchangeAsync(string command, CancellationToken cancellationToken = default) => Task.FromResult(respond(command));

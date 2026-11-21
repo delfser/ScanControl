@@ -1,4 +1,4 @@
-param([string]$InnoCompiler, [switch]$SkipTests)
+param([string]$InnoCompiler, [switch]$SkipTests, [string]$PayloadDirectory)
 $ErrorActionPreference = 'Stop'
 $root = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 Push-Location $root
@@ -28,7 +28,7 @@ try {
         if ($LASTEXITCODE -ne 0) { throw 'Tests fehlgeschlagen.' }
     }
     # Separate payload avoids touching a running portable application.
-    $payload = Join-Path $root 'artifacts\installer-payload'
+    $payload = if ($PayloadDirectory) { [IO.Path]::GetFullPath($PayloadDirectory) } else { Join-Path $root 'artifacts\installer-payload' }
     & dotnet publish ScanControl.App -c Release -r win-x64 --self-contained true --artifacts-path artifacts/build -o $payload
     if ($LASTEXITCODE -ne 0) { throw 'Publish fehlgeschlagen.' }
     $output = Join-Path $root 'artifacts\installer'

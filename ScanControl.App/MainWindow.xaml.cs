@@ -37,10 +37,23 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        Width = Math.Min(Width, SystemParameters.WorkArea.Width);
+        Height = Math.Min(Height, SystemParameters.WorkArea.Height);
+        if (SystemParameters.WorkArea.Height < 800) ScannerExpander.IsExpanded = false;
         BaudBox.ItemsSource = new[] { 2400, 4800, 9600, 19200 };
         BanksList.Items.Add("Alle Bänke"); for (int i = 1; i <= 10; i++) BanksList.Items.Add($"Bank {i}  ·  {(i - 1) * 50 + 1}–{i * 50}");
         BanksList.SelectedIndex = 0; ChannelsGrid.ItemsSource = channels;
         ContentRendered += InitializeAfterRender;
+        Loaded += (_, _) => UpdateWorkspaceSize();
+    }
+    private void Workspace_SizeChanged(object sender, SizeChangedEventArgs e) => UpdateWorkspaceSize();
+    private void ScannerExpanded_Changed(object sender, RoutedEventArgs e) => Dispatcher.BeginInvoke(UpdateWorkspaceSize);
+    private void UpdateWorkspaceSize()
+    {
+        if (Workspace == null || WorkspaceScroll == null) return;
+        // A finite grid preserves DataGrid virtualization; the outer scrollbar handles small/high-DPI screens.
+        Workspace.Height = Math.Max(ScannerExpander?.IsExpanded == true ? 650 : 470, WorkspaceScroll.ActualHeight - 14);
+        Workspace.Width = Math.Max(830, WorkspaceScroll.ActualWidth - 38);
     }
     private bool startupInitialized, audioLoaded, audioLoading;
     private async void InitializeAfterRender(object? sender, EventArgs e)
@@ -76,6 +89,25 @@ public partial class MainWindow : Window
             {
                 if (scanner is not SimulatedScanner || channels.Count != 10 || audio.IsStarted || ActualWidth <= 0 || ActualHeight <= 0 || !DisplayFrequency.Text.Contains("149.1250"))
                     throw new InvalidOperationException("Starttest: Oberfläche, Simulator oder verzögerte Audioinitialisierung nicht bestätigt.");
+                if (Environment.GetCommandLineArgs().Contains("--layout-smoke-test"))
+                {
+                    foreach (var size in new[] { (1024d, 600d), (900d, 500d) })
+                    {
+                        WindowState = WindowState.Normal; Width = size.Item1; Height = size.Item2;
+                        ScannerExpander.IsExpanded = true; UpdateWorkspaceSize(); UpdateLayout();
+                        await Dispatcher.Yield(DispatcherPriority.ApplicationIdle);
+                        if (ChannelsGrid.ActualHeight < 150 || WorkspaceScroll.ViewportHeight <= 0)
+                            throw new InvalidOperationException("Laptoplayout: Kanaltabelle hat zu wenig Platz.");
+                        if (Workspace.ActualWidth > Math.Max(830, WorkspaceScroll.ActualWidth - 38) + 1)
+                            throw new InvalidOperationException("Laptoplayout: Arbeitsbereich wächst unkontrolliert in die Breite.");
+                        if (size.Item2 == 500 && WorkspaceScroll.ScrollableHeight <= 0)
+                            throw new InvalidOperationException("Laptoplayout: äußerer Scrollbereich fehlt.");
+                        StartupDiagnostics.Write($"LAYOUT PASS {size}: table={ChannelsGrid.ActualHeight:F0}, scroll={WorkspaceScroll.ScrollableHeight:F0}");
+                        ScannerExpander.IsExpanded = false; UpdateWorkspaceSize(); UpdateLayout();
+                        await Dispatcher.Yield(DispatcherPriority.ApplicationIdle);
+                        if (ChannelsGrid.ActualHeight < 180) throw new InvalidOperationException("Laptoplayout: Tabelle nach Einklappen zu klein.");
+                    }
+                }
                 // Ensure at least one complete render/dispatcher pass before the executable test succeeds.
                 await Dispatcher.Yield(DispatcherPriority.ApplicationIdle);
                 Application.Current.Shutdown(0); return;
@@ -206,8 +238,10 @@ public partial class MainWindow : Window
         polling = true;
         try
         {
-            var d = await scanner.DisplayAsync(); DisplayChannel.Text = "CH " + d.Channel; DisplayFrequency.Text = d.Frequency + " MHz";
-            DisplayName.Text = d.Line1; DisplayLine2.Text = d.Line2 + "  " + d.Mode;
+            var d = await scanner.DisplayAsync(); DisplayChannel.Text = "CH " + d.Channel;
+            DisplayFrequency.Text = string.IsNullOrWhiteSpace(d.Frequency) ? "—" : d.Frequency + " MHz";
+            DisplayName.Text = d.Line1;
+            DisplayLine2.Text = d.Line2.Contains(d.Mode, StringComparison.OrdinalIgnoreCase) ? d.Line2 : d.Line2 + "  " + d.Mode;
         }
         catch (Exception e)
         {
@@ -317,7 +351,15 @@ public partial class MainWindow : Window
     private async void Connect_Click(object sender, RoutedEventArgs e) => await ConnectAsync();
     private void Disconnect_Click(object sender, RoutedEventArgs e) { if (busy || polling) return; scanner?.Dispose(); scanner = null; transfer = null; ConnectionLabel.Text = "Getrennt"; ModeBadge.Text = "GETRENNT"; DisplayName.Text = "NICHT VERBUNDEN"; }
     private void Cancel_Click(object sender, RoutedEventArgs e) => operation?.Cancel();
-    private void Navigate_Click(object sender, RoutedEventArgs e) => Tabs.SelectedIndex = int.Parse((string)((Button)sender).Tag);
+    private void Navigate_Click(object sender, RoutedEventArgs e)
+    {
+        Tabs.SelectedIndex = int.Parse((string)((Button)sender).Tag);
+        if (((Button)sender).Content?.ToString()?.Contains("Kanäle") == true)
+        {
+            ScannerExpander.IsExpanded = false; UpdateWorkspaceSize();
+            WorkspaceScroll.ScrollToTop(); ChannelsGrid.Focus();
+        }
+    }
     private void About_Click(object sender, RoutedEventArgs e)
     {
         var version = typeof(MainWindow).Assembly.GetName().Version;
