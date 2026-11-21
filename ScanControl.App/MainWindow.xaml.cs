@@ -184,16 +184,19 @@ public partial class MainWindow : Window
         await RunAsync(async ct =>
         {
             scanner?.Dispose(); scanner = null; transfer = null; ConnectionLabel.Text = "Verbindung wird geprüft …";
+            DisplayChannel.Text = "CH ---"; DisplayFrequency.Text = "----.---- MHz";
+            DisplayName.Text = "VERBINDUNG PRUEFEN"; DisplayLine2.Text = ""; ModeBadge.Text = "GETRENNT";
             try
             {
                 settings.Port = PortBox.Text; settings.Baud = (int)(BaudBox.SelectedItem ?? 9600);
                 var simulation = SimulationBox.IsChecked == true;
                 scanner = simulation ? new SimulatedScanner() : await Task.Run<IScanner>(() => new Bc780Scanner(new SerialTransport(settings, Log)), ct);
                 var identity = await scanner.IdentifyAsync(ct); transfer = new(scanner);
-                ConnectionLabel.Text = simulation ? "● SIMULATION · kein Hardwaretest" : $"● BC780XLT · {settings.Port}, {settings.Baud} Baud";
-                ModeBadge.Text = simulation ? "SIMULATION" : "HARDWARE"; StatusLabel.Text = identity;
+                var model = simulation ? "BC780XLT" : Parser.Identity(identity).Model;
+                ConnectionLabel.Text = simulation ? "● SIMULATION · kein Hardwaretest" : $"● {model} · {settings.Port}, {settings.Baud} Baud";
+                ModeBadge.Text = simulation ? "SIMULATION" : model; StatusLabel.Text = identity;
             }
-            catch { scanner?.Dispose(); scanner = null; ConnectionLabel.Text = "Getrennt · Verbindung fehlgeschlagen"; throw; }
+            catch { scanner?.Dispose(); scanner = null; ConnectionLabel.Text = "Getrennt · Verbindung fehlgeschlagen"; DisplayName.Text = "NICHT VERBUNDEN"; throw; }
         });
     }
     private async Task PollAsync()

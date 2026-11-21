@@ -101,6 +101,25 @@ public class FunctionalTests
         using var scanner = new Bc780Scanner(new ScriptTransport(_ => "SI BC785D,0000,103"));
         await Assert.ThrowsAsync<InvalidDataException>(() => scanner.IdentifyAsync());
     }
+    [Theory]
+    [InlineData("SI BC780XLT,1000000001,103", "BC780XLT")]
+    [InlineData("SI UBC780XLT,0000000000,103", "UBC780XLT")]
+    public async Task AcceptBoth780ModelIdentities(string response, string model)
+    {
+        var commands = new List<string>();
+        using var scanner = new Bc780Scanner(new ScriptTransport(command => { commands.Add(command); return response; }));
+        Assert.Equal(response, await scanner.IdentifyAsync());
+        Assert.Equal(model, Parser.Identity(response).Model);
+        Assert.Equal(new[] { "SI" }, commands);
+    }
+    [Theory]
+    [InlineData("SI UBC780XLT,0000000000")]
+    [InlineData("SI UBC780XLT,,103")]
+    [InlineData("SI UBC780XLT,0000000000,10")]
+    [InlineData("SI UBC780XLT-extra,0000000000,103")]
+    [InlineData("SI UBC785XLT,0000000000,103")]
+    [InlineData("SI UBC780XLT,0000000000,103\n")]
+    public void RejectMalformedOrDifferentIdentity(string response) => Assert.Throws<InvalidDataException>(() => Parser.Identity(response));
     private sealed class ScriptTransport(Func<string, string> respond) : ICommandTransport
     {
         public Task<string> ExchangeAsync(string command, CancellationToken cancellationToken = default) => Task.FromResult(respond(command));

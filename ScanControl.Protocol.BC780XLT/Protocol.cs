@@ -4,8 +4,18 @@ using ScanControl.Core;
 
 namespace ScanControl.Protocol.BC780XLT;
 
+public record ScannerIdentity(string Model, string SerialNumber, string ProtocolVersion);
+
 public static partial class Parser
 {
+    [GeneratedRegex(@"\ASI (BC780XLT|UBC780XLT),([A-Za-z0-9]{1,32}),(\d{3})\z")]
+    private static partial Regex IdentityPattern();
+    public static ScannerIdentity Identity(string response)
+    {
+        var match = IdentityPattern().Match(response);
+        if (!match.Success) throw new InvalidDataException("Kein bestätigter BC780XLT/UBC780XLT oder unvollständige Geräteantwort: " + response);
+        return new(match.Groups[1].Value, match.Groups[2].Value, match.Groups[3].Value);
+    }
     [GeneratedRegex(@"^C(\d{3}) F(\d{8}) T([NF]) D([NF]) L([NF]) A([NF]) R([NF]) N(\d{3})(L?)\s*$")]
     private static partial Regex ChannelPattern();
     public static Channel Channel(string response, int expected)
@@ -42,7 +52,7 @@ public class Bc780Scanner(ICommandTransport transport) : IScanner
     public async Task<string> IdentifyAsync(CancellationToken ct = default)
     {
         var s = await Send("SI", ct);
-        if (!s.StartsWith("SI BC780XLT,", StringComparison.Ordinal)) throw new InvalidDataException("Kein bestätigter BC780XLT: " + s);
+        _ = Parser.Identity(s);
         return s;
     }
     public async Task<Channel> ReadAsync(int number, CancellationToken ct = default)

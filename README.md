@@ -6,6 +6,8 @@ Die Scannerfront besitzt eine geschichtete Gehäuseblende, ein kompaktes bernste
 
 ## Start und Installation
 
+Version 0.2.2 erkennt auch die vom angeschlossenen europäischen Gerät gemeldete Kennung `SI UBC780XLT,0000000000,103`. Beide Modellnamen werden exakt geprüft; ähnliche oder unvollständige Geräteantworten bleiben gesperrt. Der tatsächliche Modellname erscheint im Verbindungsstatus. Beim Verbindungswechsel wird die alte Displayanzeige geleert, damit simulierte Anzeigedaten nicht als Hardwareantwort erscheinen. Dies bestätigt die Geräteerkennung, noch nicht sämtliche Lese-/Schreibfunktionen der UBC-Variante. Für den im Hardwaretest gezeigten Anschluss sind **COM3 und 4800 Baud** einzustellen.
+
 ### Startkorrektur in 0.2.1
 
 Die Oberfläche wird vor der Initialisierung gezeichnet. Beim Start werden keine Audiogeräte oder COM-Ports synchron auf dem Oberflächenthread geöffnet/aufgezählt. Audio wird erst beim Öffnen der Einstellungen auf einem eigenen STA-Hintergrundthread abgefragt; nach acht Sekunden ohne Antwort wird die Audiosteuerung für diesen Programmlauf deaktiviert. Die Scanneroberfläche bleibt dabei nutzbar. Ein bereits im Treiber laufender Aufruf lässt sich nicht sicher gewaltsam abbrechen.
