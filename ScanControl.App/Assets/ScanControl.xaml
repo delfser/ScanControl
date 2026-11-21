@@ -1,0 +1,26 @@
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Width="256" Height="256">
+ <Canvas Width="256" Height="256">
+  <Rectangle Canvas.Left="8" Canvas.Top="8" Width="240" Height="240" RadiusX="51" RadiusY="51" Stroke="#4D535C" StrokeThickness="2">
+   <Rectangle.Fill><LinearGradientBrush StartPoint="0,0" EndPoint="1,1"><GradientStop Color="#343A43"/><GradientStop Color="#101317" Offset="0.55"/><GradientStop Color="#090B0F" Offset="1"/></LinearGradientBrush></Rectangle.Fill>
+  </Rectangle>
+  <Path Data="M 86,45 C 62,59 62,86 86,100 M 170,45 C 194,59 194,86 170,100" Stroke="#F33942" StrokeThickness="10" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+  <Path Data="M 104,59 C 92,67 92,79 104,87 M 152,59 C 164,67 164,79 152,87" Stroke="#F33942" StrokeThickness="9" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+  <Ellipse Canvas.Left="120" Canvas.Top="65" Width="16" Height="16" Fill="#FF4D52"/>
+  <Line X1="128" Y1="79" X2="128" Y2="120" Stroke="#F33942" StrokeThickness="9" StrokeStartLineCap="Round"/>
+  <Rectangle Canvas.Left="37" Canvas.Top="113" Width="182" Height="108" RadiusX="18" RadiusY="18" Fill="#080A0D"/>
+  <Rectangle Canvas.Left="37" Canvas.Top="108" Width="182" Height="108" RadiusX="18" RadiusY="18" Stroke="#6F7781" StrokeThickness="3">
+   <Rectangle.Fill><LinearGradientBrush StartPoint="0,0" EndPoint="0,1"><GradientStop Color="#525963"/><GradientStop Color="#20262D" Offset="0.18"/><GradientStop Color="#10151B" Offset="1"/></LinearGradientBrush></Rectangle.Fill>
+  </Rectangle>
+  <Rectangle Canvas.Left="50" Canvas.Top="122" Width="112" Height="69" RadiusX="8" RadiusY="8" Fill="#070A0D"/>
+  <Rectangle Canvas.Left="56" Canvas.Top="128" Width="100" Height="57" RadiusX="4" RadiusY="4">
+   <Rectangle.Fill><LinearGradientBrush StartPoint="0,0" EndPoint="0,1"><GradientStop Color="#FFD06A"/><GradientStop Color="#F5A222" Offset="0.45"/><GradientStop Color="#DC7B12" Offset="1"/></LinearGradientBrush></Rectangle.Fill>
+  </Rectangle>
+  <Path Data="M 66,141 H 144 M 66,172 H 107" Stroke="#69400D" StrokeThickness="4"/>
+  <Path Data="M 71,153 V 164 M 84,148 V 164 M 97,145 V 164 M 110,151 V 164 M 123,143 V 164 M 136,147 V 164" Stroke="#352407" StrokeThickness="6"/>
+  <Rectangle Canvas.Left="174" Canvas.Top="128" Width="25" Height="10" RadiusX="3" RadiusY="3" Fill="#AAB1B6"/>
+  <Rectangle Canvas.Left="174" Canvas.Top="145" Width="25" Height="10" RadiusX="3" RadiusY="3" Fill="#8B939D"/>
+  <Ellipse Canvas.Left="171" Canvas.Top="165" Width="31" Height="31" Fill="#0B0E13" Stroke="#626B76" StrokeThickness="3"/>
+  <Line X1="186" Y1="172" X2="186" Y2="181" Stroke="#DBDFE2" StrokeThickness="3"/>
+  <Path Data="M 62,201 H 146" Stroke="#646E78" StrokeThickness="3" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+ </Canvas>
+</Viewbox>
