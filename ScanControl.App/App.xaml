@@ -4,6 +4,6 @@
              xmlns:local="clr-namespace:ScanControl.App"
              StartupUri="MainWindow.xaml">
     <Application.Resources>
-         
+
     </Application.Resources>
 </Application>
