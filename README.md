@@ -6,6 +6,16 @@ Die Scannerfront besitzt eine geschichtete Gehäuseblende, ein kompaktes bernste
 
 ## Start und Installation
 
+### Startkorrektur in 0.2.1
+
+Die Oberfläche wird vor der Initialisierung gezeichnet. Beim Start werden keine Audiogeräte oder COM-Ports synchron auf dem Oberflächenthread geöffnet/aufgezählt. Audio wird erst beim Öffnen der Einstellungen auf einem eigenen STA-Hintergrundthread abgefragt; nach acht Sekunden ohne Antwort wird die Audiosteuerung für diesen Programmlauf deaktiviert. Die Scanneroberfläche bleibt dabei nutzbar. Ein bereits im Treiber laufender Aufruf lässt sich nicht sicher gewaltsam abbrechen.
+
+Standardmäßig verwendet WPF Softwaredarstellung, um mögliche Probleme mit Grafiktreibern oder Remote-Sitzungen zu umgehen. Das ist eine Kompatibilitätsmaßnahme, kein Nachweis für die Ursache eines schwarzen Fensters auf einem bestimmten PC. `--hardware-rendering` aktiviert auf Wunsch wieder die Standarddarstellung.
+
+Im Startmenü gibt es zusätzlich **ScanControl (Kompatibilitätsstart)** (`--safe-start`). Dieser Start ignoriert gespeicherte Einstellungen, verbindet nur den Simulator und überschreibt die vorhandene Einstellungsdatei nicht. Automatisches Verbinden mit Hardware bleibt dabei aus.
+
+Startschritte und Fehler stehen unter `%LOCALAPPDATA%\ScanControl\Diagnose\startup.log`, unabhängig vom optionalen seriellen Diagnoseprotokoll. Bei einem weiterhin schwarzen Fenster diese Datei zur Diagnose verwenden. `tools/Test-Startup.ps1` startet die veröffentlichte EXE zweimal bis zum gezeichneten Fenster und initialisierten simulierten Display; diese Tests öffnen keine Audio-/Scannerhardware.
+
 Für den zweiten PC gibt es einen Windows-Installer mit Startmenüeintrag, optionalem Desktopsymbol und Deinstallation. Anleitung: [docs/INSTALLATION.md](docs/INSTALLATION.md). Installer bauen: `powershell.exe -NoProfile -File tools/Build-Installer.ps1`. Die benötigte .NET-Laufzeit ist enthalten; Projekte und Einstellungen bleiben bei Deinstallation erhalten.
 
 Die veröffentlichte Anwendung liegt nach dem Publish in `artifacts/win-x64/ScanControl.App.exe`. Den **gesamten Ordner** kopieren; die EXE benötigt die mitgelieferten DLLs. Keine Installation und keine zusätzliche .NET-Runtime nötig (Windows x64, selbstenthaltender Publish). Das Programm ist nicht signiert.

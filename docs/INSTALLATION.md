@@ -1,7 +1,7 @@
 # ScanControl auf einem zweiten PC installieren
 
 1. Im privaten GitHub-Repository `delfser/ScanControl` anmelden und **Releases** öffnen.
-2. Unter **Assets** die Datei `ScanControl-Setup-0.2.0-win-x64.exe` herunterladen. Die automatisch angebotenen „Source code“-Archive sind nicht der Installer.
+2. Unter **Assets** die Datei `ScanControl-Setup-0.2.1-win-x64.exe` herunterladen. Die automatisch angebotenen „Source code“-Archive sind nicht der Installer.
 3. Setup starten und Zielordner bestätigen. Optional „Desktopsymbol erstellen“ auswählen.
 4. ScanControl über Startmenü oder Desktop öffnen. Beim ersten Start ist die Simulation aktiv.
 
@@ -22,3 +22,9 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/Build-Installer.ps
 Das Skript prüft Tests, veröffentlicht eine selbstenthaltende Windows-x64-Anwendung und erstellt Setup plus SHA256SUMS unter `artifacts/installer`. Der signierte Inno-Setup-Compiler 6.7.4 wird bei Bedarf mit fester SHA-256-Prüfung portabel unter `artifacts/tools` bereitgestellt. Es wird kein Compiler global installiert. Alternativ kann `-InnoCompiler C:\Pfad\ISCC.exe` angegeben werden.
 
 Die GitHub-Aktion erstellt bei Änderungen ein herunterladbares Build-Artefakt. Ein Versions-Tag wie `v0.2.0` erstellt zusätzlich eine als Vorabversion gekennzeichnete GitHub-Release. Hardwaretests sind dadurch nicht ersetzt.
+
+## Schwarzes Fenster beim Start
+
+Ab Version 0.2.1 wird die Oberfläche vor der Geräteinitialisierung gezeichnet. Audiogeräte werden erst in den Einstellungen abgefragt. Die Grafikdarstellung verwendet einen Software-Kompatibilitätsmodus. Im Startmenü kann außerdem „ScanControl (Kompatibilitätsstart)“ gewählt werden, um gespeicherte Einstellungen und automatische Hardwareverbindungen für diesen Start zu umgehen. Projekte und Einstellungen werden dadurch nicht gelöscht.
+
+Falls das Problem bestehen bleibt: `%LOCALAPPDATA%\ScanControl\Diagnose\startup.log` öffnen. Der Eintrag `Content rendered` zeigt, dass WPF das Fenster gerendert hat; `READY` zeigt die abgeschlossene Initialisierung. Diese Einträge beweisen nicht, dass der Remote-PC den Bildinhalt fehlerfrei anzeigt, helfen aber, Initialisierungs- und Darstellungsprobleme zu unterscheiden.

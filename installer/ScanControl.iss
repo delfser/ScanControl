@@ -1,5 +1,5 @@
 #ifndef AppVersion
-  #define AppVersion "0.2.0"
+  #define AppVersion "0.2.1"
 #endif
 #ifndef PublishSource
   #define PublishSource "..\artifacts\win-x64"
@@ -49,6 +49,7 @@ Source: "..\docs\*"; DestDir: "{app}\docs"; Flags: ignoreversion recursesubdirs 
 
 [Icons]
 Name: "{group}\ScanControl"; Filename: "{app}\ScanControl.App.exe"; AppUserModelID: "ScanControl.BC780XLT"
+Name: "{group}\ScanControl (Kompatibilitätsstart)"; Filename: "{app}\ScanControl.App.exe"; Parameters: "--safe-start"; AppUserModelID: "ScanControl.BC780XLT"
 Name: "{group}\ScanControl deinstallieren"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\ScanControl"; Filename: "{app}\ScanControl.App.exe"; Tasks: desktopicon; AppUserModelID: "ScanControl.BC780XLT"
 

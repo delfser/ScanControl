@@ -24,7 +24,7 @@ public partial class MainWindow : Window
     private IScanner? scanner;
     private TransferService? transfer;
     private readonly DispatcherTimer timer = new();
-    private readonly AudioInput audio = new();
+    private readonly AudioInputWorker audio = new();
     private CancellationTokenSource? operation;
     private bool busy, dirty, polling, originSimulation = true, closing;
     private Channel? clipboard;
@@ -37,21 +37,90 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        PortBox.ItemsSource = SerialPort.GetPortNames().Order().ToArray(); BaudBox.ItemsSource = new[] { 2400, 4800, 9600, 19200 };
+        BaudBox.ItemsSource = new[] { 2400, 4800, 9600, 19200 };
         BanksList.Items.Add("Alle Bänke"); for (int i = 1; i <= 10; i++) BanksList.Items.Add($"Bank {i}  ·  {(i - 1) * 50 + 1}–{i * 50}");
         BanksList.SelectedIndex = 0; ChannelsGrid.ItemsSource = channels;
-        Loaded += async (_, _) =>
+        ContentRendered += InitializeAfterRender;
+    }
+    private bool startupInitialized, audioLoaded, audioLoading;
+    private async void InitializeAfterRender(object? sender, EventArgs e)
+    {
+        if (startupInitialized) return;
+        startupInitialized = true;
+        StartupDiagnostics.Write("Content rendered; initialization begins");
+        StatusLabel.Text = "Programm wird vorbereitet …";
+        await Dispatcher.Yield(DispatcherPriority.Background);
+        try
         {
-            try { if (File.Exists(settingsPath)) settings = JsonSerializer.Deserialize<Settings>(await File.ReadAllTextAsync(settingsPath)) ?? new(); }
-            catch (Exception e) { Error("Einstellungen konnten nicht geladen werden: " + e.Message); }
+            if (!App.SafeStart && !App.SmokeTest && File.Exists(settingsPath))
+            {
+                StartupDiagnostics.Write("Loading settings");
+                try { settings = JsonSerializer.Deserialize<Settings>(await File.ReadAllTextAsync(settingsPath)) ?? new(); }
+                catch (Exception error) { StartupDiagnostics.Write("Settings invalid; using defaults without overwriting original: " + error); settings = new(); }
+            }
             ApplySettings();
-            try { AudioBox.ItemsSource = audio.Devices(); AudioBox.SelectedItem = ((List<InputDevice>)AudioBox.ItemsSource).FirstOrDefault(d => d.Id == settings.AudioDeviceId); }
-            catch (Exception e) { AudioLabel.Text = e.Message; }
-            timer.Interval = TimeSpan.FromMilliseconds(Math.Clamp(settings.PollMs, 500, 60000)); timer.Tick += async (_, _) => await PollAsync();
-            if (settings.AutoConnect) { SimulationBox.IsChecked = false; await ConnectAsync(); }
-            else { await ConnectAsync(); await ReadAsync(Enumerable.Range(121, 10).ToArray(), false); }
+            StartupDiagnostics.Write("Settings applied; audio initialization deferred until settings page");
+            timer.Interval = TimeSpan.FromMilliseconds(Math.Clamp(settings.PollMs, 500, 60000));
+            timer.Tick += async (_, _) => await PollAsync();
+            if (settings.AutoConnect && !App.SafeStart && !App.SmokeTest)
+            {
+                SimulationBox.IsChecked = false; await ConnectAsync();
+            }
+            else
+            {
+                await ConnectAsync(); await ReadAsync(Enumerable.Range(121, 10).ToArray(), false);
+            }
+            await PollAsync();
+            StartupDiagnostics.Write("READY: initialization complete; display updated");
+            if (App.SmokeTest)
+            {
+                if (scanner is not SimulatedScanner || channels.Count != 10 || audio.IsStarted || ActualWidth <= 0 || ActualHeight <= 0 || !DisplayFrequency.Text.Contains("149.1250"))
+                    throw new InvalidOperationException("Starttest: Oberfläche, Simulator oder verzögerte Audioinitialisierung nicht bestätigt.");
+                // Ensure at least one complete render/dispatcher pass before the executable test succeeds.
+                await Dispatcher.Yield(DispatcherPriority.ApplicationIdle);
+                Application.Current.Shutdown(0); return;
+            }
             timer.Start();
-        };
+            _ = RefreshPortsAsync();
+        }
+        catch (Exception error)
+        {
+            StartupDiagnostics.Write("Initialization failed: " + error);
+            if (App.SmokeTest) { Application.Current.Shutdown(1); return; }
+            StatusLabel.Text = "Start nicht vollständig: " + error.Message;
+            MessageBox.Show(this, "Die Oberfläche ist geöffnet, aber die Vorbereitung ist fehlgeschlagen.\n\n" + error.Message + "\n\nStartprotokoll: " + StartupDiagnostics.LogPath, "ScanControl – Startdiagnose");
+        }
+    }
+    private async Task RefreshPortsAsync()
+    {
+        try
+        {
+            var ports = await Task.Run(SerialPort.GetPortNames).WaitAsync(TimeSpan.FromSeconds(3));
+            if (!closing) { var text = PortBox.Text; PortBox.ItemsSource = ports.Order().ToArray(); PortBox.Text = text; }
+            StartupDiagnostics.Write("COM port list loaded");
+        }
+        catch (Exception error) { StartupDiagnostics.Write("COM discovery unavailable: " + error.Message); }
+    }
+    private async Task LoadAudioDevicesAsync()
+    {
+        if (audioLoaded || audioLoading || closing) return;
+        audioLoading = true; AudioLabel.Text = "Aufnahmegeräte werden abgefragt …";
+        try
+        {
+            StartupDiagnostics.Write("Audio discovery requested by settings page");
+            var devices = await audio.DevicesAsync();
+            if (closing) return;
+            AudioBox.ItemsSource = devices; audioLoaded = true;
+            AudioBox.SelectedItem = devices.FirstOrDefault(d => d.Id == settings.AudioDeviceId);
+            AudioLabel.Text = devices.Count == 0 ? "Kein aktives Windows-Aufnahmegerät gefunden." : "Aufnahmegerät auswählen; Pegel wird nur auf Anforderung verändert.";
+            StartupDiagnostics.Write($"Audio discovery complete: {devices.Count} devices");
+        }
+        catch (Exception error) { AudioLabel.Text = error.Message; StartupDiagnostics.Write("Audio discovery failed: " + error); }
+        finally { audioLoading = false; }
+    }
+    private async void Tabs_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (ReferenceEquals(e.Source, Tabs) && IsLoaded && Tabs.SelectedIndex == 2) await LoadAudioDevicesAsync();
     }
     private void ApplySettings()
     {
@@ -328,13 +397,13 @@ public partial class MainWindow : Window
             StatusLabel.Text = redo ? "Lokale Änderung wiederholt · Scanner unverändert." : "Lokale Änderung rückgängig gemacht · Scanner unverändert.";
         });
     }
-    private void Audio_Changed(object sender, SelectionChangedEventArgs e)
+    private async void Audio_Changed(object sender, SelectionChangedEventArgs e)
     {
-        try { if (AudioBox.SelectedItem is InputDevice d) { audio.Select(d.Id); var current = audio.Read(); AudioLabel.Text = $"Windows aktuell: {current.Level}% · Mute {current.Mute}"; } }
+        try { if (AudioBox.SelectedItem is InputDevice d) { var current = await audio.SelectAsync(d.Id); if (!closing && AudioBox.SelectedItem is InputDevice selected && selected.Id == d.Id) AudioLabel.Text = $"Windows aktuell: {current.Level}% · Mute {current.Mute}"; } }
         catch (Exception ex) { AudioLabel.Text = ex.Message; }
     }
-    private void AudioApply_Click(object sender, RoutedEventArgs e) { try { audio.Set((int)LevelSlider.Value, MuteBox.IsChecked == true); AudioRefresh_Click(sender, e); } catch (Exception ex) { Error(ex.Message); } }
-    private void AudioRefresh_Click(object sender, RoutedEventArgs e) { try { var v = audio.Read(); AudioLabel.Text = $"Windows aktuell: {v.Level}% · Mute {v.Mute}"; } catch (Exception ex) { Error(ex.Message); } }
+    private async void AudioApply_Click(object sender, RoutedEventArgs e) { try { var v = await audio.SetAsync((int)LevelSlider.Value, MuteBox.IsChecked == true); if (!closing) AudioLabel.Text = $"Windows aktuell: {v.Level}% · Mute {v.Mute}"; } catch (Exception ex) { if (!closing) Error(ex.Message); } }
+    private async void AudioRefresh_Click(object sender, RoutedEventArgs e) { try { var v = await audio.ReadAsync(); if (!closing) AudioLabel.Text = $"Windows aktuell: {v.Level}% · Mute {v.Mute}"; } catch (Exception ex) { if (!closing) Error(ex.Message); } }
     private async void SettingsSave_Click(object sender, RoutedEventArgs e)
     {
         await RunAsync(async ct =>
@@ -351,6 +420,7 @@ public partial class MainWindow : Window
     }
     private void Window_Closing(object? sender, CancelEventArgs e)
     {
+        if (App.SmokeTest) { closing = true; timer.Stop(); scanner?.Dispose(); audio.Dispose(); return; }
         if (busy || polling) { e.Cancel = true; StatusLabel.Text = "Bitte laufenden Vorgang abbrechen und sein Ende abwarten."; return; }
         if (dirty && !Confirm("Ungespeicherte lokale Änderungen verwerfen und ScanControl schließen?")) { e.Cancel = true; return; }
         closing = true; timer.Stop(); scanner?.Dispose(); audio.Dispose();
